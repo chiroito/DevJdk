@@ -90,26 +90,26 @@ public class UnEscapeProperty {
         out.flush();
 
         byte[] escapedBytes = out.toByteArray();
-        byte[] unEscapedBytes = new byte[escapedBytes.length];
+        ByteArrayOutputStream unEscapedOut = new ByteArrayOutputStream(4096);
         boolean isEscaping = false;
 
-        for(int escapedOffset = 0, unEscapedOffset = 0 ; escapedOffset < escapedBytes.length ; escapedOffset++){
+        for(int escapedOffset = 0 ; escapedOffset < escapedBytes.length ; escapedOffset++){
             byte character = escapedBytes[escapedOffset];
             if(isEscaping){
                 if (character != '\\' && character != ':') {
-                    unEscapedBytes[unEscapedOffset++] = ESCAPE;
+                    unEscapedOut.write(ESCAPE);
                 }
-                unEscapedBytes[unEscapedOffset++] = character;
+                unEscapedOut.write(character);
                 isEscaping = false;
             } else if(character == ESCAPE){
                 isEscaping = true;
             } else {
                 isEscaping = false;
-                unEscapedBytes[unEscapedOffset++] = character;
+                unEscapedOut.write(character);
             }
         }
 
-        return unEscapedBytes;
+        return unEscapedOut.toByteArray();
     }
 
 }
