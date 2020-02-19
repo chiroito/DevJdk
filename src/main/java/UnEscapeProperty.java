@@ -25,7 +25,8 @@ public class UnEscapeProperty {
         System.out.println("+++++++++++++++++++++++++++++++++++++++++");
         System.out.println("");
         System.out.println(new String(serializePropertiesToByteArray3(System.getProperties())));
-        TimeUnit.HOURS.sleep(1);
+        System.out.println("");
+        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     }
 
     /*
@@ -87,14 +88,10 @@ public class UnEscapeProperty {
 
         props.store(out, null);
 
-        out.flush();
-
-        byte[] escapedBytes = out.toByteArray();
-        ByteArrayOutputStream unEscapedOut = new ByteArrayOutputStream(4096);
+        ByteArrayOutputStream unEscapedOut = new ByteArrayOutputStream(out.size());
         boolean isEscaping = false;
 
-        for(int escapedOffset = 0 ; escapedOffset < escapedBytes.length ; escapedOffset++){
-            byte character = escapedBytes[escapedOffset];
+        for(byte character : out.toByteArray()){
             if(isEscaping){
                 if (character != '\\' && character != ':') {
                     unEscapedOut.write(ESCAPE);
@@ -104,7 +101,6 @@ public class UnEscapeProperty {
             } else if(character == ESCAPE){
                 isEscaping = true;
             } else {
-                isEscaping = false;
                 unEscapedOut.write(character);
             }
         }
