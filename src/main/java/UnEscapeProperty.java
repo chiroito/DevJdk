@@ -109,7 +109,7 @@ public class UnEscapeProperty {
 
     private static byte[] serializePropertiesToByteArray4(Properties p) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out, "8859_1"));
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out));
 
         bw.write("#" + new Date().toString());
         bw.newLine();
