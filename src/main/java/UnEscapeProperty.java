@@ -1,5 +1,7 @@
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -128,37 +130,19 @@ public class UnEscapeProperty {
 
     private static String saveConvert(String theString) {
         int len = theString.length();
-        int bufLen = len * 2;
-        if (bufLen < 0) {
-            bufLen = Integer.MAX_VALUE;
-        }
-        StringBuilder outBuffer = new StringBuilder(bufLen);
+        StringBuilder outBuffer = new StringBuilder(len * 2);
 
         String replacedString = theString.replaceAll("\t", "\\\\t").replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r").replaceAll("\f", "\\\\f");
 
         for (int x = 0; x < replacedString.length(); x++) {
             char aChar = replacedString.charAt(x);
-
             if (((aChar < 0x0020) || (aChar > 0x007e))) {
-                outBuffer.append('\\');
-                outBuffer.append('u');
-                outBuffer.append(toHex((aChar >> 12) & 0xF));
-                outBuffer.append(toHex((aChar >> 8) & 0xF));
-                outBuffer.append(toHex((aChar >> 4) & 0xF));
-                outBuffer.append(toHex(aChar & 0xF));
+                outBuffer.append(String.format("\\u%04X", Character.codePointAt(replacedString, x)));
             } else {
                 outBuffer.append(aChar);
             }
         }
 
         return outBuffer.toString();
-    }
-
-    private static final char[] hexDigit = {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
-
-    private static char toHex(int nibble) {
-        return hexDigit[(nibble & 0xF)];
     }
 }
