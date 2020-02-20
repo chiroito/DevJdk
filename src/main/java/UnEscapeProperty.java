@@ -1,10 +1,6 @@
 
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.util.Properties;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -12,7 +8,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class UnEscapeProperty {
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
         System.out.println("System.lineSeparator().getBytes().length = " + System.lineSeparator().getBytes().length);
         System.out.println("\"\\\\\".getBytes().length" + "\\".getBytes().length);
 
@@ -27,6 +23,9 @@ public class UnEscapeProperty {
         System.out.println(new String(serializePropertiesToByteArray3(System.getProperties())));
         System.out.println("");
         System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        System.out.println("");
+        System.out.println(new String(serializePropertiesToByteArray4(System.getProperties())));
+        System.out.println("");
     }
 
     /*
@@ -55,10 +54,10 @@ public class UnEscapeProperty {
     private static byte[] serializePropertiesToByteArray2(Properties p) throws IOException {
         byte[] output = null;
 
-        try(
-        ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
-        OutputStreamWriter osw = new OutputStreamWriter(out);
-        BufferedWriter bw = new BufferedWriter(osw);) {
+        try (
+                ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
+                OutputStreamWriter osw = new OutputStreamWriter(out);
+                BufferedWriter bw = new BufferedWriter(osw);) {
 
             Set<String> keyset = p.stringPropertyNames();
             for (String key : keyset) {
@@ -108,4 +107,56 @@ public class UnEscapeProperty {
         return unEscapedOut.toByteArray();
     }
 
+    private static byte[] serializePropertiesToByteArray4(Properties p) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out, "8859_1"));
+
+        bw.write("#" + new Date().toString());
+        bw.newLine();
+
+        for (String key : p.stringPropertyNames()) {
+            String val = p.getProperty(key);
+            key = saveConvert(key);
+            val = saveConvert(val);
+            bw.write(key + "=" + val);
+            bw.newLine();
+        }
+        bw.flush();
+
+        return out.toByteArray();
+    }
+
+    private static String saveConvert(String theString) {
+        int len = theString.length();
+        int bufLen = len * 2;
+        if (bufLen < 0) {
+            bufLen = Integer.MAX_VALUE;
+        }
+        StringBuilder outBuffer = new StringBuilder(bufLen);
+
+        for (int x = 0; x < len; x++) {
+            char aChar = theString.charAt(x);
+            switch (aChar) {
+                case '\t':
+                    outBuffer.append('\\');
+                    outBuffer.append('t');
+                    break;
+                case '\n':
+                    outBuffer.append('\\');
+                    outBuffer.append('n');
+                    break;
+                case '\r':
+                    outBuffer.append('\\');
+                    outBuffer.append('r');
+                    break;
+                case '\f':
+                    outBuffer.append('\\');
+                    outBuffer.append('f');
+                    break;
+                default:
+                    outBuffer.append(aChar);
+            }
+        }
+        return outBuffer.toString();
+    }
 }
