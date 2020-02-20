@@ -90,14 +90,14 @@ public class UnEscapeProperty {
         ByteArrayOutputStream unEscapedOut = new ByteArrayOutputStream(out.size());
         boolean isEscaping = false;
 
-        for(byte character : out.toByteArray()){
-            if(isEscaping){
+        for (byte character : out.toByteArray()) {
+            if (isEscaping) {
                 if (character != '\\' && character != ':') {
                     unEscapedOut.write(ESCAPE);
                 }
                 unEscapedOut.write(character);
                 isEscaping = false;
-            } else if(character == ESCAPE){
+            } else if (character == ESCAPE) {
                 isEscaping = true;
             } else {
                 unEscapedOut.write(character);
@@ -109,7 +109,7 @@ public class UnEscapeProperty {
 
     private static byte[] serializePropertiesToByteArray4(Properties p) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out));
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out, "8859_1"));
 
         bw.write("#" + new Date().toString());
         bw.newLine();
@@ -134,29 +134,31 @@ public class UnEscapeProperty {
         }
         StringBuilder outBuffer = new StringBuilder(bufLen);
 
-        for (int x = 0; x < len; x++) {
-            char aChar = theString.charAt(x);
-            switch (aChar) {
-                case '\t':
-                    outBuffer.append('\\');
-                    outBuffer.append('t');
-                    break;
-                case '\n':
-                    outBuffer.append('\\');
-                    outBuffer.append('n');
-                    break;
-                case '\r':
-                    outBuffer.append('\\');
-                    outBuffer.append('r');
-                    break;
-                case '\f':
-                    outBuffer.append('\\');
-                    outBuffer.append('f');
-                    break;
-                default:
-                    outBuffer.append(aChar);
+        String replacedString = theString.replaceAll("\t", "\\\\t").replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r").replaceAll("\f", "\\\\f");
+
+        for (int x = 0; x < replacedString.length(); x++) {
+            char aChar = replacedString.charAt(x);
+
+            if (((aChar < 0x0020) || (aChar > 0x007e))) {
+                outBuffer.append('\\');
+                outBuffer.append('u');
+                outBuffer.append(toHex((aChar >> 12) & 0xF));
+                outBuffer.append(toHex((aChar >> 8) & 0xF));
+                outBuffer.append(toHex((aChar >> 4) & 0xF));
+                outBuffer.append(toHex(aChar & 0xF));
+            } else {
+                outBuffer.append(aChar);
             }
         }
+
         return outBuffer.toString();
+    }
+
+    private static final char[] hexDigit = {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+    };
+
+    private static char toHex(int nibble) {
+        return hexDigit[(nibble & 0xF)];
     }
 }
