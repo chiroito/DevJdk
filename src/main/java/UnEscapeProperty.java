@@ -1,12 +1,13 @@
-
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * jdk.internal.vm.VMSupport#serializePropertiesToByteArray を修正するサンプルコード
+ * -Dnormal=normal_val -D"space space=blank blank" -Dnonascii=あいうえお -Durl=http://openjdk.java.net/ -DwinDir="C:\"
  */
 public class UnEscapeProperty {
 
@@ -26,8 +27,19 @@ public class UnEscapeProperty {
         System.out.println("");
         System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         System.out.println("");
-        System.out.println(new String(serializePropertiesToByteArray4(System.getProperties())));
+        String result = new String(serializePropertiesToByteArray4(System.getProperties()));
+        System.out.println(result);
         System.out.println("");
+
+        String[] shouldNotContains = new String[]{"https\\://", "C\\:\\\\"};
+        for (String shouldNotContainWord : shouldNotContains) {
+            System.out.println(String.format("%s %b", shouldNotContainWord, OutputAnalyzer.shouldNotContain(result, shouldNotContainWord)));
+        }
+
+        String[] shouldContains = new String[]{"https://", "C:\\", "\\u3042\\u3044\\u3046\\u3048\\u304A", "C:\\", "blank blank", "normal_val", "\\n"};
+        for (String shouldContainWord : shouldContains) {
+            System.out.println(String.format("%s %b", shouldContainWord, OutputAnalyzer.shouldContain(result, shouldContainWord)));
+        }
     }
 
     /*
@@ -134,15 +146,14 @@ public class UnEscapeProperty {
 
         String replacedString = theString.replaceAll("\t", "\\\\t").replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r").replaceAll("\f", "\\\\f");
 
-        for (int x = 0; x < replacedString.length(); x++) {
-            char aChar = replacedString.charAt(x);
-            if (((aChar < 0x0020) || (aChar > 0x007e))) {
-                outBuffer.append(String.format("\\u%04X", Character.codePointAt(replacedString, x)));
+        String collect = replacedString.codePoints().mapToObj(cp -> {
+            if ((cp < 0x20) || (cp > 0x7e)) {
+                return String.format("\\u%04X", cp);
             } else {
-                outBuffer.append(aChar);
+                return Character.toString(cp);
             }
-        }
+        }).collect(Collectors.joining());
 
-        return outBuffer.toString();
+        return collect;
     }
 }
