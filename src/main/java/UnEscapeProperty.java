@@ -144,7 +144,7 @@ public class UnEscapeProperty {
         int len = theString.length();
         StringBuilder outBuffer = new StringBuilder(len * 2);
 
-        String replacedString = theString.replaceAll("\t", "\\\\t").replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r").replaceAll("\f", "\\\\f");
+        String replacedString = theString.replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r").replace("\f", "\\f");
 
         String collect = replacedString.codePoints().mapToObj(cp -> {
             if ((cp < 0x20) || (cp > 0x7e)) {
