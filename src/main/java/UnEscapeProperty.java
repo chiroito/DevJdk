@@ -1,13 +1,17 @@
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * jdk.internal.vm.VMSupport#serializePropertiesToByteArray を修正するサンプルコード
- * -Dnormal=normal_val -D"space space=blank blank" -Dnonascii=あいうえお -Durl=http://openjdk.java.net/ -DwinDir="C:\"
+ * -Dnormal=normal_val -D"space space=blank blank" -Dnonascii=あいうえお -Durl=http://openjdk.java.net/ -DwinDir=C:\
  */
 public class UnEscapeProperty {
 
@@ -38,6 +42,7 @@ public class UnEscapeProperty {
 
         String[] shouldContains = new String[]{"https://", "C:\\", "\\u3042\\u3044\\u3046\\u3048\\u304A", "C:\\", "blank blank", "normal_val", "\\n"};
         for (String shouldContainWord : shouldContains) {
+            shouldContainWord = new String(shouldContainWord.getBytes("8859_1"), "8859_1");
             System.out.println(String.format("%s %b", shouldContainWord, OutputAnalyzer.shouldContain(result, shouldContainWord)));
         }
     }
@@ -141,19 +146,22 @@ public class UnEscapeProperty {
     }
 
     private static String saveConvert(String theString) {
-        int len = theString.length();
-        StringBuilder outBuffer = new StringBuilder(len * 2);
-
         String replacedString = theString.replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r").replace("\f", "\\f");
 
-        String collect = replacedString.codePoints().mapToObj(cp -> {
-            if ((cp < 0x20) || (cp > 0x7e)) {
-                return String.format("\\u%04X", cp);
-            } else {
-                return Character.toString(cp);
-            }
-        }).collect(Collectors.joining());
+        var charBuf = CharBuffer.wrap(replacedString);
+        var byteBuf = ByteBuffer.allocate(charBuf.length() * 6);
+        var encoder = StandardCharsets.ISO_8859_1
+                .newEncoder()
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
 
-        return collect;
+        CoderResult result = encoder.encode(charBuf, byteBuf, false);
+        if (result.isUnmappable()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < charBuf.length(); i++) {
+                sb.append(String.format("\\u%04X", (int) charBuf.get(i)));
+            }
+            byteBuf.put(sb.toString().getBytes());
+        }
+        return new String(byteBuf.array()).trim();
     }
 }
