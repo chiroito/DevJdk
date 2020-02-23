@@ -1,17 +1,14 @@
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.CoderResult;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * jdk.internal.vm.VMSupport#serializePropertiesToByteArray を修正するサンプルコード
- * -Dnormal=normal_val -D"space space=blank blank" -Dnonascii=あいうえお -Durl=http://openjdk.java.net/ -DwinDir=C:\
+ * -Dnormal=normal_val -D"space space=blank blank" -Dnonascii=あいうえお -Durl=http://openjdk.java.net/ -DwinDir=C:\ -Dmix=aいuえおkakikukeko
  */
 public class UnEscapeProperty {
 
@@ -40,7 +37,7 @@ public class UnEscapeProperty {
             System.out.println(String.format("%s %b", shouldNotContainWord, OutputAnalyzer.shouldNotContain(result, shouldNotContainWord)));
         }
 
-        String[] shouldContains = new String[]{"https://", "C:\\", "\\u3042\\u3044\\u3046\\u3048\\u304A", "C:\\", "blank blank", "normal_val", "\\n"};
+        String[] shouldContains = new String[]{"https://", "C:\\", "\\u3042\\u3044\\u3046\\u3048\\u304A", "C:\\", "blank blank", "normal_val", "\\n", "a\\u3044u\\u3048\\u304Aka"};
         for (String shouldContainWord : shouldContains) {
             shouldContainWord = new String(shouldContainWord.getBytes("8859_1"), "8859_1");
             System.out.println(String.format("%s %b", shouldContainWord, OutputAnalyzer.shouldContain(result, shouldContainWord)));
@@ -128,40 +125,63 @@ public class UnEscapeProperty {
 
     private static byte[] serializePropertiesToByteArray4(Properties p) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(out, "8859_1"));
+        PrintWriter bw = new PrintWriter(new OutputStreamWriter(out, "8859_1"));
 
-        bw.write("#" + new Date().toString());
-        bw.newLine();
+        bw.println("#" + new Date().toString());
 
-        for (String key : p.stringPropertyNames()) {
-            String val = p.getProperty(key);
-            key = saveConvert(key);
-            val = saveConvert(val);
-            bw.write(key + "=" + val);
-            bw.newLine();
+        try {
+            for (String key : p.stringPropertyNames()) {
+                String val = p.getProperty(key);
+                key = toISO88591(toEscapeSpecialChar(toEscapeSpace(key)));
+                val = toISO88591(toEscapeSpecialChar(val));
+                bw.println(key + "=" + val);
+            }
+        } catch (CharacterCodingException e) {
+            throw new RuntimeException(e);
         }
         bw.flush();
 
         return out.toByteArray();
     }
 
-    private static String saveConvert(String theString) {
+    private static String toEscapeSpecialChar(String theString) {
         String replacedString = theString.replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r").replace("\f", "\\f");
+        return replacedString;
+    }
 
-        var charBuf = CharBuffer.wrap(replacedString);
-        var byteBuf = ByteBuffer.allocate(charBuf.length() * 6);
+    private static String toEscapeSpace(String source) {
+        return source.replace(" ", "\\ ");
+    }
+
+    private static String toISO88591(String source) throws CharacterCodingException {
+
+        var charBuf = CharBuffer.wrap(source);
+        var byteBuf = ByteBuffer.allocate(charBuf.length() * 6); // 6 is 2 bytes for '\\u' as String and 4 bytes for code point.
         var encoder = StandardCharsets.ISO_8859_1
                 .newEncoder()
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
 
-        CoderResult result = encoder.encode(charBuf, byteBuf, false);
-        if (result.isUnmappable()) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < charBuf.length(); i++) {
-                sb.append(String.format("\\u%04X", (int) charBuf.get(i)));
+        CoderResult result;
+        do {
+            result = encoder.encode(charBuf, byteBuf, false);
+            if (result.isUnmappable()) {
+                byteBuf.put(String.format("\\u%04X", (int) charBuf.get()).getBytes());
+            } else if (result.isError()) {
+                result.throwException();
             }
-            byteBuf.put(sb.toString().getBytes());
-        }
-        return new String(byteBuf.array()).trim();
+        } while (result.isError());
+
+        return new String(byteBuf.array(), 0, byteBuf.position());
+
+//        これでもできる
+//        StringBuilder sb = new StringBuilder();
+//        for (int i = 0; i < charBuf.length; i++) {
+//            if (encoder.canEncode(charBuf[i])) {
+//                sb.append(charBuf[i]);
+//            } else {
+//                sb.append(String.format("\\u%04X", (int) charBuf[i]));
+//            }
+//        }
+//        return sb.toString();
     }
 }
