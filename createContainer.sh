@@ -18,4 +18,4 @@ popd
 
 docker stop ${CONTAINER_NAME}
 docker rm ${CONTAINER_NAME}
-docker run -it --name ${CONTAINER_NAME} ${IMAGE_NAME}
+docker run -it -p 5005:5005 --name ${CONTAINER_NAME} ${IMAGE_NAME}
